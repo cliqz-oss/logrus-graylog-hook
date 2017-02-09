@@ -31,6 +31,7 @@ type GraylogHook struct {
 	mu          sync.RWMutex
 	synchronous bool
 	blacklist   map[string]bool
+	levels      []logrus.Level
 }
 
 // Graylog needs file and line params
@@ -38,6 +39,19 @@ type graylogEntry struct {
 	*logrus.Entry
 	file string
 	line int
+}
+
+func NewGraylogLevelHook(addr string, extra map[string]interface{}, level logrus.Level) *GraylogHook {
+	levels := []logrus.Level{}
+	for _, l := range logrus.AllLevels {
+		if l >= level {
+			levels = append(levels, l)
+		}
+	}
+
+	hook := NewGraylogHook(addr, extra)
+	hook.levels = levels
+	return hook
 }
 
 // NewGraylogHook creates a hook to be added to an instance of logger.
@@ -57,6 +71,7 @@ func NewGraylogHook(addr string, extra map[string]interface{}) *GraylogHook {
 		Extra:       extra,
 		gelfLogger:  g,
 		synchronous: true,
+		levels:      logrus.AllLevels,
 	}
 	return hook
 }
@@ -209,14 +224,7 @@ func (hook *GraylogHook) sendEntry(entry graylogEntry) {
 
 // Levels returns the available logging levels.
 func (hook *GraylogHook) Levels() []logrus.Level {
-	return []logrus.Level{
-		logrus.PanicLevel,
-		logrus.FatalLevel,
-		logrus.ErrorLevel,
-		logrus.WarnLevel,
-		logrus.InfoLevel,
-		logrus.DebugLevel,
-	}
+	return hook.levels
 }
 
 // Blacklist create a blacklist map to filter some message keys.
